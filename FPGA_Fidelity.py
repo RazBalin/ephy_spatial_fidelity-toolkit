@@ -1,24 +1,24 @@
 """
-FPGA_Fidelity — ECoG Grid Spatial-Fidelity Verification
-========================================================
+FPGA_Fidelity: ECoG Grid Spatial-Fidelity Verification
+=======================================================
 
 Purpose
 -------
-Verify that the FPGA ECoG grid remains centred over the sagittal sinus
-across the 21-day corticosterone paradigm.
+Verify that the FPGA ECoG grid remains centered over the sagittal sinus
+across a longitudinal experiment.
 
 Approach
 --------
 The sagittal sinus bisects the brain midline.  Electrodes directly over
 the sinus are farthest from cortical tissue, so high-frequency (30–100 Hz)
-neural activity is maximally attenuated there — the sinus appears as a
+neural activity is maximally attenuated there; the sinus appears as a
 *trough* in the high-gamma power profile across the electrode columns.
 
 For each sub-grid (rostral & caudal) we sample the **first row** of 16
-electrodes and compare the high-gamma depth profile between Day 0 (BL)
-and Day 21 (MDD).  The figure overlays both days:
+electrodes and compare the high-gamma depth profile between the Baseline (BL)
+session and a later session.  The figure overlays both days:
 
-    • Blue shaded band  = expected midline (centre columns 7–8)
+    • Blue shaded band  = expected midline (center columns 7–8)
     • Orange shaded band = detected midline (column with minimum high-γ)
 
 If the trough has not shifted columns, the grid placement is stable.
@@ -41,7 +41,7 @@ Composite PNG saved in Results/ subfolder.
 
 Author
 ------
-Generated for Raz's DMN electrophysiology PhD project (JoVE reviewer response).
+    Raz Balin, Castrén lab, Neuroscience Center, HiLIFE, University of Helsinki.
 """
 
 from __future__ import annotations
@@ -93,10 +93,10 @@ class Config:
     #   Caudal sub-grid row 0:   ch 0, 1, … 15       (ascending)
     #
     # Note: the caudal sub-grid's internal wiring maps the physical midline
-    # to a different software column than the rostral grid.  This is fine —
+    # to a different software column than the rostral grid.  This is fine:
     # the tool's purpose is to verify STABILITY (same trough position on
-    # Day 0 vs Day 21), not absolute centering.  Empirically, ch 0-15 gives
-    # cross-day r ≈ 0.99 on well-centred mice — the correct first row.
+    # Day 0 vs Follow-up), not absolute centering.  Empirically, ch 0-15 gives
+    # cross-day r ≈ 0.99 on well-centred mice - the correct first row.
     rostral_row0_start: int = 256
     rostral_row0_step: int = 1      # +1 = ascending
     caudal_row0_start: int = 0
@@ -107,7 +107,7 @@ class Config:
 
     # --- Midline search window (inner columns only, avoids edge artefacts) ---
     # The craniotomy is cut to the grid dimensions, so the sinus is always
-    # within a few columns of centre — never at the periphery.
+    # within a few columns of centre - never at the periphery.
     midline_search_cols: Tuple[int, int] = (3, 12)  # inclusive bounds
 
     # --- High-gamma band for sinus detection ---
@@ -153,13 +153,13 @@ def _parse_metadata(fpath: str) -> Optional[Tuple[str, str, str, str]]:
     patterns = [
         ("bl-ctrl",  "Control",    "Baseline"),
         ("bl ctrl",  "Control",    "Baseline"),
-        ("mdd-ctrl", "Control",    "Post-Stress"),
-        ("mdd ctrl", "Control",    "Post-Stress"),
-        ("lsd-ctrl", "Control",    "Post-LSD"),
-        ("lsd ctrl", "Control",    "Post-LSD"),
+        ("mdd-ctrl", "Control",    "Follow-up"),
+        ("mdd ctrl", "Control",    "Follow-up"),
+        ("lsd-ctrl", "Control",    "Second follow-up"),
+        ("lsd ctrl", "Control",    "Second follow-up"),
         ("bl",       "Experiment", "Baseline"),
-        ("mdd",      "Experiment", "Post-Stress"),
-        ("lsd",      "Experiment", "Post-LSD"),
+        ("mdd",      "Experiment", "Follow-up"),
+        ("lsd",      "Experiment", "Second follow-up"),
     ]
     for pattern, g, t in patterns:
         if pattern in basename:
@@ -188,9 +188,9 @@ def discover_animal_files(data_dir: str, animal_id: str) -> Dict[str, str]:
         if timepoint == "Baseline":
             result["Day 0"] = f
             log.info(f"  Day 0 (Baseline): {os.path.basename(f)}  [{group}]")
-        elif timepoint == "Post-Stress":
-            result["Day 21"] = f
-            log.info(f"  Day 21 (Post-Stress): {os.path.basename(f)}  [{group}]")
+        elif timepoint == "Follow-up":
+            result["Follow-up"] = f
+            log.info(f"  Follow-up: {os.path.basename(f)}  [{group}]")
 
     return result
 
@@ -213,7 +213,7 @@ def compute_first_row_hg_profile(
     For ascending grids (rostral):  start=256, step=+1  → [256, 257, …, 271]
     For descending grids (caudal):  start=511, step=−1  → [511, 510, …, 496]
 
-    Returns: ndarray of shape (n_cols,) — log10(high-gamma power) per electrode.
+    Returns: ndarray of shape (n_cols,) - log10(high-gamma power) per electrode.
              Column 0 = leftmost physical electrode.
     """
     tmax = min(cfg.t_end_s, raw.times[-1])
@@ -265,7 +265,7 @@ def detect_midline_column(
     """Find the column with the lowest high-gamma power (sinus trough).
 
     Search is restricted to ``search_range`` (inclusive) to avoid edge
-    artefacts at the grid periphery — channels at the border often have
+    artefacts at the grid periphery - channels at the border often have
     anomalous impedance/contact and would fool a naive global argmin.
     """
     lo, hi = search_range
@@ -285,7 +285,7 @@ def _plot_subgrid_panel(
     subgrid_name: str,
     panel_label: str,
 ):
-    """Plot overlaid first-row high-gamma profiles for Day 0 vs Day 21."""
+    """Plot overlaid first-row high-gamma profiles for Day 0 vs Follow-up."""
 
     cols = np.arange(cfg.n_cols)
     col_pos_um = cols * cfg.inter_electrode_um  # physical position in µm
@@ -306,7 +306,7 @@ def _plot_subgrid_panel(
     det_d0_um = det_d0 * cfg.inter_electrode_um
     det_d21_um = det_d21 * cfg.inter_electrode_um
 
-    # Show the union of Day 0 and Day 21 detected midlines as orange band
+    # Show the union of Day 0 and Follow-up detected midlines as orange band
     det_left_um = min(det_d0_um, det_d21_um) - cfg.inter_electrode_um * 0.5
     det_right_um = max(det_d0_um, det_d21_um) + cfg.inter_electrode_um * 0.5
     ax.axvspan(det_left_um, det_right_um, color="#FF9800", alpha=0.18, zorder=0,
@@ -315,7 +315,7 @@ def _plot_subgrid_panel(
     # Day 0 detected midline marker
     ax.axvline(det_d0_um, color=cfg.palette_day0, linewidth=1.8, linestyle="-",
                alpha=0.6, zorder=2)
-    # Day 21 detected midline marker
+    # Follow-up detected midline marker
     ax.axvline(det_d21_um, color=cfg.palette_day21, linewidth=1.8, linestyle="-",
                alpha=0.6, zorder=2)
 
@@ -325,7 +325,7 @@ def _plot_subgrid_panel(
             label="Day 0 (Baseline)", zorder=4, alpha=0.9)
     ax.plot(col_pos_um, profile_d21, color=cfg.palette_day21, linewidth=2.0,
             marker="s", markersize=6, markeredgecolor="white", markeredgewidth=0.8,
-            label="Day 21 (Post-Stress)", zorder=4, alpha=0.9)
+            label="Follow-up", zorder=4, alpha=0.9)
 
     # --- Filled area showing the trough shape ---
     y_top = max(np.nanmax(profile_d0), np.nanmax(profile_d21))
@@ -348,7 +348,7 @@ def _plot_subgrid_panel(
         stab_color = "#F44336"
 
     annot = (f"Day 0 trough: col {det_d0}\n"
-             f"Day 21 trough: col {det_d21}\n"
+             f"Follow-up trough: col {det_d21}\n"
              f"{stability}")
 
     ax.text(0.98, 0.97, annot, transform=ax.transAxes, fontsize=8,
@@ -357,7 +357,7 @@ def _plot_subgrid_panel(
                       alpha=0.92, linewidth=1.5),
             zorder=6)
 
-    # --- Correlation between Day 0 and Day 21 profiles ---
+    # --- Correlation between Day 0 and Follow-up profiles ---
     valid = ~(np.isnan(profile_d0) | np.isnan(profile_d21))
     if valid.sum() > 3:
         r_val, _ = sp_stats.pearsonr(profile_d0[valid], profile_d21[valid])
@@ -376,7 +376,7 @@ def _plot_subgrid_panel(
     ax.tick_params(labelsize=7)
     ax.legend(fontsize=7, loc="lower left", framealpha=0.9)
 
-    ax.set_title(f"{panel_label}   {subgrid_name} Sub-Grid — First Row (16 electrodes)",
+    ax.set_title(f"{panel_label}   {subgrid_name} Sub-Grid - First Row (16 electrodes)",
                  fontsize=11, fontweight="bold", loc="left")
 
     # Tidy spines
@@ -394,7 +394,7 @@ def _plot_barcode_strip(
 ):
     """Plot a stacked colour barcode strip for intuitive visual comparison.
 
-    Two rows: top = Day 0, bottom = Day 21.
+    Two rows: top = Day 0, bottom = Follow-up.
     Colour = high-gamma power (dark = sinus trough, bright = cortex).
     """
     # Stack into 2-row array
@@ -422,11 +422,11 @@ def _plot_barcode_strip(
             markeredgecolor="white", markeredgewidth=1.2, zorder=5)
 
     ax.set_yticks([0, 1])
-    ax.set_yticklabels(["Day 0", "Day 21"], fontsize=8, fontweight="bold")
+    ax.set_yticklabels(["Day 0", "Follow-up"], fontsize=8, fontweight="bold")
     ax.set_xticks(range(cfg.n_cols))
     ax.set_xticklabels([str(c) for c in range(cfg.n_cols)], fontsize=6)
     ax.set_xlabel("Column", fontsize=8)
-    ax.set_title(f"{panel_label}   {subgrid_name} — Barcode",
+    ax.set_title(f"{panel_label}   {subgrid_name} - Barcode",
                  fontsize=10, fontweight="bold", loc="left")
 
     cbar = plt.colorbar(im, ax=ax, shrink=0.6, pad=0.04, orientation="vertical")
@@ -471,9 +471,9 @@ def create_composite_figure(
 
     # --- Suptitle ---
     fig.suptitle(
-        f"FPGA ECoG Grid Spatial Fidelity — {animal_id}\n"
+        f"FPGA ECoG Grid Spatial Fidelity - {animal_id}\n"
         f"Day 0: {os.path.basename(day0_fname)}   |   "
-        f"Day 21: {os.path.basename(day21_fname)}",
+        f"Follow-up: {os.path.basename(day21_fname)}",
         fontsize=14, fontweight="bold",
     )
 
@@ -484,8 +484,8 @@ def create_composite_figure(
         "sagittal sinus are farthest from cortex → high-γ is maximally "
         "attenuated (trough). Blue band = expected midline (cols 7–8, "
         "rostral sub-grid wiring). Orange markers/band = detected trough. "
-        "Stability criterion: trough at same column on Day 0 and Day 21. "
-        "Profile r = Pearson correlation of Day 0 vs Day 21 first-row profiles.",
+        "Stability criterion: trough at same column on Day 0 and Follow-up. "
+        "Profile r = Pearson correlation of Day 0 vs Follow-up first-row profiles.",
         ha="center", fontsize=7.5, fontstyle="italic", color="grey",
         wrap=True,
     )
@@ -510,7 +510,7 @@ def main():
     cfg = _resolve_paths(Config())
 
     print("=" * 60)
-    print("  FPGA Fidelity — ECoG Grid Spatial Verification")
+    print("  FPGA Fidelity - ECoG Grid Spatial Verification")
     print("=" * 60)
     animal_id = input("\n  Which animal do you want to verify spatial fidelity from? ").strip()
     if not animal_id:
@@ -528,8 +528,8 @@ def main():
         print(f"\n  ERROR: No Day 0 (Baseline) FPGA file found for {animal_id}.")
         print(f"  Searched in: {cfg.data_dir}")
         return
-    if "Day 21" not in files:
-        print(f"\n  ERROR: No Day 21 (Post-Stress) FPGA file found for {animal_id}.")
+    if "Follow-up" not in files:
+        print(f"\n  ERROR: No Follow-up FPGA file found for {animal_id}.")
         print(f"  Searched in: {cfg.data_dir}")
         return
 
@@ -542,9 +542,9 @@ def main():
     caudal_d0 = compute_first_row_hg_profile(raw_d0, cfg.caudal_row0_start, cfg.caudal_row0_step, cfg)
     del raw_d0
 
-    # --- Load Day 21 ---
-    print(f"\n  Loading Day 21: {os.path.basename(files['Day 21'])}")
-    raw_d21 = mne.io.read_raw_fif(files["Day 21"], preload=True, verbose=False)
+    # --- Load Follow-up ---
+    print(f"\n  Loading Follow-up: {os.path.basename(files['Follow-up'])}")
+    raw_d21 = mne.io.read_raw_fif(files["Follow-up"], preload=True, verbose=False)
     print(f"    {len(raw_d21.ch_names)} channels, {raw_d21.times[-1]:.1f} s")
 
     rostral_d21 = compute_first_row_hg_profile(raw_d21, cfg.rostral_row0_start, cfg.rostral_row0_step, cfg)
@@ -566,7 +566,7 @@ def main():
         print(f"\n  {name} sub-grid row 0 "
               f"(ch {ch_first}→{ch_last}, step={step:+d}):")
         print(f"    Day 0  midline → col {det_0}")
-        print(f"    Day 21 midline → col {det_21}")
+        print(f"    Follow-up midline → col {det_21}")
         print(f"    Inter-session shift: {shift:+.0f} µm")
 
     # --- Build figure ---
@@ -574,7 +574,7 @@ def main():
         animal_id,
         rostral_d0, rostral_d21,
         caudal_d0, caudal_d21,
-        files["Day 0"], files["Day 21"],
+        files["Day 0"], files["Follow-up"],
         cfg,
     )
 
