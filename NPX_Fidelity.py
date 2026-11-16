@@ -1,13 +1,13 @@
 """
-NPX_Fidelity — Neuropixels ProbeB Spatial-Fidelity Verification
-================================================================
+NPX_Fidelity: Neuropixels ProbeB Spatial-Fidelity Verification
+===============================================================
 
 Purpose
 -------
-Verify that the Neuropixels ProbeB laminar position is stable across the
-21-day corticosterone paradigm by comparing Current Source Density (CSD)
-depth profiles between Day 0 (Baseline) and Day 21 (Post-Stress) recordings
-of the same animal.
+Verify that the Neuropixels ProbeB laminar position is stable across a
+longitudinal experiment by comparing Current Source Density (CSD) depth
+profiles between the Baseline session and a later session of the same
+animal.
 
 Method
 ------
@@ -31,7 +31,7 @@ Composite PNG in Results/ subfolder.
 
 Author
 ------
-Generated for Raz's DMN electrophysiology PhD project (JoVE reviewer response).
+    Raz Balin, Castrén lab, Neuroscience Center, HiLIFE, University of Helsinki.
 """
 
 from __future__ import annotations
@@ -147,13 +147,13 @@ def _parse_metadata(fpath: str) -> Optional[Tuple[str, str, str, str]]:
     patterns = [
         ("bl-ctrl",  "Control",    "Baseline"),
         ("bl ctrl",  "Control",    "Baseline"),
-        ("mdd-ctrl", "Control",    "Post-Stress"),
-        ("mdd ctrl", "Control",    "Post-Stress"),
-        ("lsd-ctrl", "Control",    "Post-LSD"),
-        ("lsd ctrl", "Control",    "Post-LSD"),
+        ("mdd-ctrl", "Control",    "Follow-up"),
+        ("mdd ctrl", "Control",    "Follow-up"),
+        ("lsd-ctrl", "Control",    "Second follow-up"),
+        ("lsd ctrl", "Control",    "Second follow-up"),
         ("bl",       "Experiment", "Baseline"),
-        ("mdd",      "Experiment", "Post-Stress"),
-        ("lsd",      "Experiment", "Post-LSD"),
+        ("mdd",      "Experiment", "Follow-up"),
+        ("lsd",      "Experiment", "Second follow-up"),
     ]
     for pattern, g, t in patterns:
         if pattern in basename:
@@ -168,9 +168,9 @@ def _parse_metadata(fpath: str) -> Optional[Tuple[str, str, str, str]]:
 def discover_animal_files(data_dir: str, animal_id: str) -> Dict[str, str]:
     """Find ProbeB _raw.fif files for a specific animal.
 
-    Returns dict mapping day label ('Day 0', 'Day 21') to filepath.
+    Returns dict mapping day label ('Day 0', 'Follow-up') to filepath.
     Day 0 = Baseline (BL or BL-ctrl)
-    Day 21 = Post-Stress (MDD or MDD-ctrl)
+    Follow-up = the later session of the same animal
     """
     pattern = os.path.join(data_dir, "*_raw.fif")
     files = glob.glob(pattern)
@@ -187,9 +187,9 @@ def discover_animal_files(data_dir: str, animal_id: str) -> Dict[str, str]:
         if timepoint == "Baseline":
             result["Day 0"] = f
             log.info(f"  Day 0 (Baseline): {os.path.basename(f)}  [{group}]")
-        elif timepoint == "Post-Stress":
-            result["Day 21"] = f
-            log.info(f"  Day 21 (Post-Stress): {os.path.basename(f)}  [{group}]")
+        elif timepoint == "Follow-up":
+            result["Follow-up"] = f
+            log.info(f"  Follow-up: {os.path.basename(f)}  [{group}]")
 
     return result
 
@@ -354,11 +354,11 @@ def plot_power_profile(
     cfg: Config,
     r_value: float,
 ):
-    """Overlay mean CSD power depth profiles for Day 0 vs Day 21."""
+    """Overlay mean CSD power depth profiles for Day 0 vs Follow-up."""
     ax.plot(power_d0, csd_ch_d0, color="#2196F3", linewidth=1.5,
             label="Day 0 (Baseline)", alpha=0.85)
     ax.plot(power_d21, csd_ch_d21, color="#F44336", linewidth=1.5,
-            label="Day 21 (Post-Stress)", alpha=0.85)
+            label="Follow-up", alpha=0.85)
 
     # Region shading
     ch_min = min(csd_ch_d0[0], csd_ch_d21[0])
@@ -404,12 +404,12 @@ def create_composite_figure(
     # --- Panel A: Day 0 CSD heatmap ---
     ax_a = fig.add_subplot(gs[0, 0])
     plot_csd_panel(csd_d0, times_d0, ch_d0, ax_a, cfg,
-                   title=f"a   Day 0 — Baseline CSD", vmax=vmax, show_cbar=True)
+                   title=f"a   Day 0 - Baseline CSD", vmax=vmax, show_cbar=True)
 
-    # --- Panel B: Day 21 CSD heatmap ---
+    # --- Panel B: Follow-up CSD heatmap ---
     ax_b = fig.add_subplot(gs[0, 1])
     plot_csd_panel(csd_d21, times_d21, ch_d21, ax_b, cfg,
-                   title=f"b   Day 21 — Post-Stress CSD", vmax=vmax, show_cbar=True)
+                   title=f"b   Follow-up CSD", vmax=vmax, show_cbar=True)
 
     # --- Panel C: Mean CSD power depth profiles overlaid ---
     power_d0 = compute_mean_csd_power_profile(csd_d0, cfg)
@@ -430,8 +430,8 @@ def create_composite_figure(
 
     # --- Suptitle ---
     fig.suptitle(
-        f"Neuropixels ProbeB Spatial Fidelity — {animal_id}\n"
-        f"Day 0: {os.path.basename(day0_fname)}   |   Day 21: {os.path.basename(day21_fname)}",
+        f"Neuropixels ProbeB Spatial Fidelity - {animal_id}\n"
+        f"Day 0: {os.path.basename(day0_fname)}   |   Follow-up: {os.path.basename(day21_fname)}",
         fontsize=13, fontweight="bold", y=1.02,
     )
 
@@ -440,7 +440,7 @@ def create_composite_figure(
         "CSD computed as 2nd spatial derivative of laminar LFP (Hamming-smoothed, "
         f"kernel={cfg.csd_smooth_kernel}). "
         "Representative 2 s epoch shown. Mean CSD power = RMS across full recording. "
-        "Pearson r quantifies laminar profile stability between Day 0 and Day 21.",
+        "Pearson r quantifies laminar profile stability between Day 0 and Follow-up.",
         ha="center", fontsize=8, fontstyle="italic", color="grey",
     )
 
@@ -464,7 +464,7 @@ def main():
     cfg = _resolve_paths(Config())
 
     print("=" * 60)
-    print("  NPX Fidelity — Neuropixels ProbeB Spatial Verification")
+    print("  NPX Fidelity - Neuropixels ProbeB Spatial Verification")
     print("=" * 60)
     animal_id = input("\n  Which animal do you want to verify spatial fidelity from? ").strip()
     if not animal_id:
@@ -483,8 +483,8 @@ def main():
         print(f"\n  ERROR: No Day 0 (Baseline) ProbeB file found for {animal_id}.")
         print(f"  Searched in: {cfg.data_dir}")
         return
-    if "Day 21" not in files:
-        print(f"\n  ERROR: No Day 21 (Post-Stress) ProbeB file found for {animal_id}.")
+    if "Follow-up" not in files:
+        print(f"\n  ERROR: No Follow-up ProbeB file found for {animal_id}.")
         print(f"  Searched in: {cfg.data_dir}")
         return
 
@@ -493,8 +493,8 @@ def main():
     csd_d0, times_d0, ch_d0 = compute_csd(raw_d0, cfg)
     del raw_d0
 
-    print(f"  Loading Day 21: {os.path.basename(files['Day 21'])}")
-    raw_d21 = mne.io.read_raw_fif(files["Day 21"], preload=True, verbose=False)
+    print(f"  Loading Follow-up: {os.path.basename(files['Follow-up'])}")
+    raw_d21 = mne.io.read_raw_fif(files["Follow-up"], preload=True, verbose=False)
     csd_d21, times_d21, ch_d21 = compute_csd(raw_d21, cfg)
     del raw_d21
 
@@ -502,18 +502,18 @@ def main():
         print("  ERROR: CSD computation failed for Day 0.")
         return
     if csd_d21.size == 0:
-        print("  ERROR: CSD computation failed for Day 21.")
+        print("  ERROR: CSD computation failed for Follow-up.")
         return
 
     print(f"\n  CSD Day 0:  {csd_d0.shape[0]} channels × {csd_d0.shape[1]} samples")
-    print(f"  CSD Day 21: {csd_d21.shape[0]} channels × {csd_d21.shape[1]} samples")
+    print(f"  CSD Follow-up: {csd_d21.shape[0]} channels × {csd_d21.shape[1]} samples")
 
     # Build figure
     fig = create_composite_figure(
         animal_id,
         csd_d0, times_d0, ch_d0,
         csd_d21, times_d21, ch_d21,
-        files["Day 0"], files["Day 21"],
+        files["Day 0"], files["Follow-up"],
         cfg,
     )
 
